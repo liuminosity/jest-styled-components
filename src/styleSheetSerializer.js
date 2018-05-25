@@ -65,18 +65,72 @@ const getStyle = classNames => {
   const atRules = getAtRules(ast, filter)
 
   ast.stylesheet.rules = rules.concat(atRules)
-
   return css.stringify(ast)
 }
 
-const replaceClassNames = (result, classNames, style) =>
-  classNames
+const generateClassName = (className, classNameMap) => {
+  let name
+  const isClassNameExtended = className.split('-')
+  if (isClassNameExtended.length > 1) {
+    name = isClassNameExtended[0]
+  } else {
+    Object.entries(classNameMap).forEach(([desiredClassName, subMap]) => {
+      Object.entries(subMap).forEach(([classSuffix, classNameArr], index) => {
+        const classIndex = classNameArr.indexOf(className)
+        if (index > 0) {
+          if (classIndex === 0) {
+            name = `${desiredClassName}_ext${index}`
+          } else if (classIndex > 0) {
+            name = `${desiredClassName}_ext${index}-${classIndex}`
+          }
+        } else if (classIndex === 0) {
+          name = `${desiredClassName}`
+        } else if (classIndex > 0) {
+          name = `${desiredClassName}-${classIndex}`
+        }
+      })
+    })
+  }
+  return name
+}
+
+const replaceClassNames = (result, classNames, style) => {
+  const names = classNames.join(' ')
+  const splitNames = names.split(/([^_\s]+__[a-zA-Z0-9]+-[a-zA-Z0-9]+)/)
+  const classNameMap = {}
+  let placeholderClassName
+  let placeholderClassNameSuffix
+  splitNames.forEach(name => {
+    if (name === '') {
+    } else if (name[0] === ' ') {
+      const classArr = name.split(' ').filter(className => className)
+      classNameMap[placeholderClassName][
+        placeholderClassNameSuffix
+      ] = classNameMap[placeholderClassName][placeholderClassNameSuffix]
+        ? classNameMap[placeholderClassName][placeholderClassNameSuffix].concat(
+            classArr
+          )
+        : classArr
+    } else {
+      [placeholderClassName, placeholderClassNameSuffix] = name.split('-')
+      classNameMap[placeholderClassName] = classNameMap[placeholderClassName]
+        ? classNameMap[placeholderClassName]
+        : {}
+      classNameMap[placeholderClassName][placeholderClassNameSuffix] = []
+    }
+  })
+
+  return classNames
     .filter(className => style.includes(className))
     .reduce(
-      (acc, className, index) =>
-        acc.replace(new RegExp(className, 'g'), `c${index++}`),
+      (acc, className) =>
+        acc.replace(
+          new RegExp(className, 'g'),
+          generateClassName(className, classNameMap)
+        ),
       result
     )
+}
 
 const replaceHashes = (result, hashes) =>
   hashes.reduce(
