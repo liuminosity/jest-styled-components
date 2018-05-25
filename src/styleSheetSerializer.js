@@ -102,6 +102,7 @@ const replaceClassNames = (result, classNames, style) => {
   let placeholderClassNameSuffix
   splitNames.forEach(name => {
     if (name === '') {
+      // Do nothing
     } else if (name[0] === ' ') {
       const classArr = name.split(' ').filter(className => className)
       classNameMap[placeholderClassName][
